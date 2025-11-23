@@ -106,18 +106,18 @@ export default function PriceCalculator() {
           <span className="text-gray-400 text-xl font-bold whitespace-nowrap">
             {t("sellingPrice")}:
           </span>
-          <span className="text-6xl font-bold tracking-tight leading-none text-white">
+          <span className="text-5xl font-bold tracking-tight leading-none text-white">
             {sellingPrice}
           </span>
         </div>
 
         {/* Cost & Keypad Row */}
-        <div className="flex justify-between mb-7 w-full flex-1">
+        <div className="flex justify-between mb-5 w-full flex-1">
           <span className="text-gray-400 text-xl font-bold whitespace-nowrap pt-4 mr-4">
             {t("cost")}:
           </span>
           <div className="flex-1 max-w-[260px]">
-            <div className="grid grid-cols-3 gap-5">
+            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
               {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
                 <KeypadButton
                   key={num}
