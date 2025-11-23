@@ -76,12 +76,12 @@ export default function PriceCalculator() {
     <div className="min-h-screen bg-[#1c1c1e] text-white font-sans touch-none overflow-hidden flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8 flex flex-col h-full">
         {/* Title */}
-        <h1 className="text-center text-2xl text-gray-400 font-light mb-8 tracking-wider">
+        <h1 className="text-center text-2xl text-gray-400 font-light mt-4 mb-10 tracking-wider">
           售价计算器
         </h1>
 
         {/* Formula Area */}
-        <div className="flex items-center justify-center gap-1 mb-8 w-full">
+        <div className="flex items-center justify-center gap-1 mb-7 w-full">
           <FormulaBox label="成本" value={cost || "0.00"} width="w-24" />
           <span className="text-gray-500 text-xl px-1">÷</span>
           <span className="text-gray-500 text-xl">(</span>
@@ -94,7 +94,7 @@ export default function PriceCalculator() {
         </div>
 
         {/* Selling Price Row */}
-        <div className="flex items-baseline justify-between mb-8 w-full">
+        <div className="flex items-baseline justify-between mb-7 w-full">
           <span className="text-gray-500 text-xl whitespace-nowrap">售价:</span>
           <span className="text-6xl font-medium tracking-tight leading-none text-white">
             {sellingPrice}
@@ -102,12 +102,12 @@ export default function PriceCalculator() {
         </div>
 
         {/* Cost & Keypad Row */}
-        <div className="flex justify-between mb-8 w-full flex-1">
+        <div className="flex justify-between mb-7 w-full flex-1">
           <span className="text-gray-500 text-xl whitespace-nowrap pt-4 mr-4">
             成本:
           </span>
-          <div className="flex-1 max-w-[280px]">
-            <div className="grid grid-cols-3 gap-4">
+          <div className="flex-1 max-w-[260px]">
+            <div className="grid grid-cols-3 gap-5">
               {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
                 <KeypadButton
                   key={num}

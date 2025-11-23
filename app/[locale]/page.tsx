@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 export default function PriceCalculator() {
   const t = useTranslations("PriceCalculator");
   const [cost, setCost] = useState("");
+  // 设置默认值为60，确保初始状态就是60
   const [margin, setMargin] = useState(60);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -17,6 +18,7 @@ export default function PriceCalculator() {
       if (!isNaN(parsed) && parsed >= 1 && parsed <= 99) {
         setMargin(parsed);
       }
+      // 如果解析失败，保持默认值60不变
     }
     setIsLoaded(true);
   }, []);
@@ -78,12 +80,12 @@ export default function PriceCalculator() {
     <div className="min-h-screen bg-[#1c1c1e] text-white font-sans touch-none overflow-hidden flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8 flex flex-col h-full">
         {/* Title */}
-        <h1 className="text-center text-2xl text-white font-bold mb-8 tracking-wider">
+        <h1 className="text-center text-4xl text-white font-bold mt-4 mb-10 tracking-wider">
           {t("title")}
         </h1>
 
         {/* Formula Area */}
-        <div className="flex items-center justify-center gap-1 mb-8 w-full font-bold">
+        <div className="flex items-center justify-center gap-1 mb-7 w-full font-bold">
           <FormulaBox label={t("cost")} value={cost || "0.00"} width="w-24" />
           <span className="text-gray-400 text-xl px-1">÷</span>
           <span className="text-gray-400 text-xl">(</span>
@@ -100,7 +102,7 @@ export default function PriceCalculator() {
         </div>
 
         {/* Selling Price Row */}
-        <div className="flex items-baseline justify-between mb-8 w-full">
+        <div className="flex items-baseline justify-between mb-7 w-full">
           <span className="text-gray-400 text-xl font-bold whitespace-nowrap">
             {t("sellingPrice")}:
           </span>
@@ -110,12 +112,12 @@ export default function PriceCalculator() {
         </div>
 
         {/* Cost & Keypad Row */}
-        <div className="flex justify-between mb-8 w-full flex-1">
+        <div className="flex justify-between mb-7 w-full flex-1">
           <span className="text-gray-400 text-xl font-bold whitespace-nowrap pt-4 mr-4">
             {t("cost")}:
           </span>
-          <div className="flex-1 max-w-[280px]">
-            <div className="grid grid-cols-3 gap-4">
+          <div className="flex-1 max-w-[260px]">
+            <div className="grid grid-cols-3 gap-5">
               {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
                 <KeypadButton
                   key={num}
@@ -163,9 +165,13 @@ const WheelSelector = ({
   const arr = useMemo(() => Array.from({ length: 99 }, (_, i) => i + 1), []);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  // 直接计算60对应的索引（59），确保初始状态正确
-  const activeIndexRef = useRef(arr.indexOf(currentMargin) || 59);
-  const [activeIndex, setActiveIndex] = useState(activeIndexRef.current);
+  // 确保初始索引计算正确，如果currentMargin无效，使用60的索引（59）
+  const initialIndex = arr.indexOf(currentMargin) !== -1 
+    ? arr.indexOf(currentMargin) 
+    : arr.indexOf(60); // 直接使用60的索引
+  
+  const activeIndexRef = useRef(initialIndex);
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
 
   // 用于防抖的计时器引用
   const vibrateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -173,11 +179,13 @@ const WheelSelector = ({
   // 当外部margin变化时同步滚动位置
   useEffect(() => {
     const newIndex = arr.indexOf(currentMargin);
-    if (newIndex !== -1 && newIndex !== activeIndexRef.current) {
-      activeIndexRef.current = newIndex;
-      setActiveIndex(newIndex);
+    const targetIndex = newIndex !== -1 ? newIndex : arr.indexOf(60);
+    
+    if (targetIndex !== activeIndexRef.current) {
+      activeIndexRef.current = targetIndex;
+      setActiveIndex(targetIndex);
       // 使用 setTimeout 确保DOM已渲染完成
-      setTimeout(() => scrollToIndex(newIndex), 0);
+      setTimeout(() => scrollToIndex(targetIndex), 0);
     }
   }, [currentMargin, arr]);
 
@@ -269,8 +277,8 @@ const WheelSelector = ({
     scrollContainer.addEventListener("scroll", handleScroll);
     window.addEventListener("resize", handleScroll);
 
-    // 初始检查
-    handleScroll();
+    // 移除初始检查，避免在未滚动到正确位置时触发错误的更新
+    // handleScroll();
 
     return () => {
       scrollContainer.removeEventListener("scroll", handleScroll);
