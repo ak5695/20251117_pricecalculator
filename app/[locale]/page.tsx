@@ -164,9 +164,8 @@ const WheelSelector = ({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // 直接计算60对应的索引（59），确保初始状态正确
-  const [activeIndex, setActiveIndex] = useState(
-    arr.indexOf(currentMargin) || 59
-  );
+  const activeIndexRef = useRef(arr.indexOf(currentMargin) || 59);
+  const [activeIndex, setActiveIndex] = useState(activeIndexRef.current);
 
   // 用于防抖的计时器引用
   const vibrateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -174,7 +173,8 @@ const WheelSelector = ({
   // 当外部margin变化时同步滚动位置
   useEffect(() => {
     const newIndex = arr.indexOf(currentMargin);
-    if (newIndex !== -1 && newIndex !== activeIndex) {
+    if (newIndex !== -1 && newIndex !== activeIndexRef.current) {
+      activeIndexRef.current = newIndex;
       setActiveIndex(newIndex);
       // 使用 setTimeout 确保DOM已渲染完成
       setTimeout(() => scrollToIndex(newIndex), 0);
@@ -184,7 +184,7 @@ const WheelSelector = ({
   // 组件挂载时滚动到初始位置
   useEffect(() => {
     // 使用 setTimeout 确保DOM已渲染完成
-    setTimeout(() => scrollToIndex(activeIndex), 0);
+    setTimeout(() => scrollToIndex(activeIndexRef.current), 0);
   }, []);
 
   // 滚动到指定索引的元素
@@ -257,9 +257,10 @@ const WheelSelector = ({
         }
       });
 
-      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+      if (newActiveIndex !== -1 && newActiveIndex !== activeIndexRef.current) {
         // 当选中项变化时触发振动
         triggerVibration();
+        activeIndexRef.current = newActiveIndex;
         setActiveIndex(newActiveIndex);
         onMarginChange(arr[newActiveIndex]);
       }
@@ -279,7 +280,7 @@ const WheelSelector = ({
         clearTimeout(vibrateTimeoutRef.current);
       }
     };
-  }, [activeIndex, arr, onMarginChange]);
+  }, [arr, onMarginChange]);
 
   return (
     <div className="h-20 w-52 relative">
@@ -295,6 +296,9 @@ const WheelSelector = ({
       <div
         ref={scrollContainerRef}
         className="h-full flex items-center overflow-x-auto scrollbar-hide space-x-2 px-2 relative z-0"
+        onTouchStart={() => {
+          if (navigator.vibrate) navigator.vibrate(1);
+        }}
       >
         {arr.map((num, index) => (
           <div
