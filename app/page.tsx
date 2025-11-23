@@ -1,172 +1,310 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+
+import React, { useState, useEffect, useRef, useMemo } from "react";
 
 export default function PriceCalculator() {
   const [cost, setCost] = useState("");
   const [margin, setMargin] = useState(60);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const centerRef = useRef<HTMLDivElement | null>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const itemWidth = 60; // 宽度一致即可
-  const isInitialLoad = useRef(true); // 新增：标记是否初始加载
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  /* 初始加载 margin */
+  // Initialize from localStorage
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("margin");
-    if (saved) {
-      setMargin(Number(saved));
+    const savedMargin = localStorage.getItem("margin");
+    if (savedMargin) {
+      const parsed = parseInt(savedMargin, 10);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 99) {
+        setMargin(parsed);
+      }
     }
+    setIsLoaded(true);
   }, []);
 
-  /* 保存 margin */
+  // Persist margin
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("margin", String(margin));
-  }, [margin]);
+    if (isLoaded) {
+      localStorage.setItem("margin", margin.toString());
+    }
+  }, [margin, isLoaded]);
 
-  /* 价格计算 */
-  const sellingPrice = cost
-    ? (Number(cost) / (1 - margin / 100)).toFixed(2)
-    : "0.00";
+  const sellingPrice = useMemo(() => {
+    const costNum = parseFloat(cost);
+    if (!costNum || isNaN(costNum)) return "0.00";
+    const price = costNum / (1 - margin / 100);
+    return price.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }, [cost, margin]);
 
-  const handleDigit = (d: string) => {
-    // 限制只能输入一个小数点
-    if (d === "." && cost.includes(".")) return;
-    setCost((p) => (p + d).replace(/^0+(\d)/, "$1"));
+  const handleInput = (val: string) => {
+    if (navigator.vibrate) navigator.vibrate(5);
+
+    if (val === "reset") {
+      setCost("");
+      return;
+    }
+    if (val === ".") {
+      if (!cost.includes(".")) {
+        setCost((prev) => (prev === "" ? "0." : prev + "."));
+      }
+      return;
+    }
+    setCost((prev) => {
+      const next = prev + val;
+      // Prevent multiple leading zeros
+      if (next.startsWith("0") && !next.startsWith("0.") && next.length > 1) {
+        return next.substring(1);
+      }
+      // Limit decimal places to 2
+      if (next.includes(".")) {
+        const parts = next.split(".");
+        const decimal = parts[1];
+        if (decimal && decimal.length > 2) return prev;
+      }
+      return next;
+    });
   };
 
-  const handleReset = () => setCost("");
-
-  /* 核心：使用 IntersectionObserver 检测中心元素 */
-  useEffect(() => {
-    if (!centerRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const v = Number(entry.target.getAttribute("data-value"));
-            if (!isNaN(v) && !isInitialLoad.current) { // 初始加载时不触发
-              setMargin(v);
-            }
-          }
-        });
-      },
-      {
-        root: scrollRef.current,
-        rootMargin: "0px",
-        threshold: 0.6, // 重叠超过 60% 即视为选中
-      }
-    );
-
-    itemRefs.current.forEach((el) => {
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  /* margin 变化 → 自动滚动到中心 */
-  useEffect(() => {
-    if (!scrollRef.current) return;
-
-    // 计算滚动位置
-    const index = margin - 1;
-    const center =
-      index * itemWidth +
-      itemWidth / 2 -
-      scrollRef.current.clientWidth / 2;
-
-    // 执行滚动
-    scrollRef.current.scrollTo({
-      left: center,
-      behavior: isInitialLoad.current ? "auto" : "smooth", // 初始加载用瞬间滚动
-    });
-
-    // 初始加载完成后标记
-    if (isInitialLoad.current) {
-      isInitialLoad.current = false;
+  // 处理毛利率变化
+  const handleMarginChange = (newMargin: number) => {
+    if (newMargin >= 1 && newMargin <= 99) {
+      setMargin(newMargin);
     }
-  }, [margin]);
+  };
 
   return (
-    <div className="w-full h-screen bg-neutral-900 text-white flex flex-col items-center p-4 select-none">
-      <h1 className="text-xl mb-6">售价计算器</h1>
+    <div className="min-h-screen bg-[#1c1c1e] text-white font-sans touch-none overflow-hidden flex flex-col items-center">
+      <div className="w-full max-w-md px-6 py-8 flex flex-col h-full">
+        {/* Title */}
+        <h1 className="text-center text-2xl text-gray-400 font-light mb-8 tracking-wider">
+          售价计算器
+        </h1>
 
-      <div className="w-full text-center text-sm opacity-80 mb-4">
-        成本 <span className="text-lg">{cost || 0}</span> ÷ (1 - 毛利率 {margin}% ) =
-      </div>
+        {/* Formula Area */}
+        <div className="flex items-center justify-center gap-1 mb-12 w-full">
+          <FormulaBox label="成本" value={cost || "0.00"} width="w-24" />
+          <span className="text-gray-500 text-xl px-1">÷</span>
+          <span className="text-gray-500 text-xl">(</span>
+          <span className="text-white text-xl px-1">1</span>
+          <span className="text-gray-500 text-xl">-</span>
+          <FormulaBox label="毛利率" value={`${margin}%`} width="w-20" />
+          <span className="text-gray-500 text-xl">)</span>
+          <span className="text-gray-500 text-xl px-1">=</span>
+          <FormulaBox label="售价" value={sellingPrice} width="w-28" />
+        </div>
 
-      <div className="text-4xl font-bold mb-6">{sellingPrice}</div>
+        {/* Selling Price Row */}
+        <div className="flex items-baseline justify-between mb-8 w-full">
+          <span className="text-gray-500 text-xl whitespace-nowrap">售价:</span>
+          <span className="text-6xl font-medium tracking-tight leading-none text-white">
+            {sellingPrice}
+          </span>
+        </div>
 
-      {/* 数字键盘 */}
-      <div className="grid grid-cols-3 gap-3 w-64 mb-6">
-        {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((d) => (
-          <button
-            key={d}
-            onClick={() => handleDigit(String(d))}
-            className="bg-neutral-700 p-4 rounded-xl active:scale-95 transition-transform"
-          >
-            {d}
-          </button>
-        ))}
-        <button
-          onClick={handleReset}
-          className="bg-neutral-700 p-4 rounded-xl active:scale-95"
-        >
-          重置
-        </button>
-        <button
-          onClick={() => handleDigit("0")}
-          className="bg-neutral-700 p-4 rounded-xl active:scale-95"
-        >
-          0
-        </button>
-        <button
-          onClick={() => handleDigit(".")}
-          className="bg-neutral-700 p-4 rounded-xl active:scale-95"
-        >
-          .
-        </button>
-      </div>
-
-      <div className="text-sm mb-2">毛利率：</div>
-
-      {/* 滚轮选择器 */}
-      <div className="relative w-full max-w-xs py-6">
-        {/* 中央白点 */}
-        <div className="pointer-events-none absolute left-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full z-20"></div>
-
-        {/* 两侧渐变 */}
-        <div className="pointer-events-none absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-neutral-900 to-transparent z-10"></div>
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-neutral-900 to-transparent z-10"></div>
-
-        {/* 中心观察区域 */}
-        <div
-          ref={centerRef}
-          className="pointer-events-none absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2"
-        ></div>
-
-        {/* 滚动容器 */}
-        <div
-          ref={scrollRef}
-          className="flex overflow-x-scroll scrollbar-hide px-[calc(50%-30px)] space-x-0"
-        >
-          {Array.from({ length: 99 }, (_, i) => i + 1).map((v, idx) => (
-            <div
-              key={v}
-              data-value={v}
-              ref={(el) => (itemRefs.current[idx] = el)}
-              className={`flex-none w-[60px] h-10 flex items-center justify-center transition-all duration-150
-              ${v === margin ? "text-3xl font-extrabold" : "text-lg opacity-40"}
-            `}
-            >
-              {v}
+        {/* Cost & Keypad Row */}
+        <div className="flex justify-between mb-8 w-full flex-1">
+          <span className="text-gray-500 text-xl whitespace-nowrap pt-4 mr-4">
+            成本:
+          </span>
+          <div className="flex-1 max-w-[280px]">
+            <div className="grid grid-cols-3 gap-4">
+              {[7, 8, 9, 4, 5, 6, 1, 2, 3].map((num) => (
+                <KeypadButton
+                  key={num}
+                  label={num.toString()}
+                  onClick={() => handleInput(num.toString())}
+                />
+              ))}
+              <KeypadButton
+                label="重置"
+                onClick={() => handleInput("reset")}
+                fontSize="text-lg"
+              />
+              <KeypadButton label="0" onClick={() => handleInput("0")} />
+              <KeypadButton label="." onClick={() => handleInput(".")} />
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* Margin Wheel Row */}
+        <div className="flex items-center justify-between w-full mt-auto pb-8">
+          <span className="text-gray-500 text-xl whitespace-nowrap mr-4">
+            毛利率:
+          </span>
+
+          <WheelSelector
+            currentMargin={margin}
+            onMarginChange={handleMarginChange}
+          />
+          <span className="text-3xl">%</span>
         </div>
       </div>
     </div>
+  );
+}
+
+const WheelSelector = ({
+  currentMargin,
+  onMarginChange,
+}: {
+  currentMargin: number;
+  onMarginChange: (margin: number) => void;
+}) => {
+  // 扩展范围到1-99，覆盖所有可能的毛利率值
+  const arr = useMemo(() => Array.from({ length: 99 }, (_, i) => i + 1), []);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // 直接计算60对应的索引（59），确保初始状态正确
+  const [activeIndex, setActiveIndex] = useState(
+    arr.indexOf(currentMargin) || 59
+  );
+
+  // 当外部margin变化时同步滚动位置
+  useEffect(() => {
+    const newIndex = arr.indexOf(currentMargin);
+    if (newIndex !== -1 && newIndex !== activeIndex) {
+      setActiveIndex(newIndex);
+      // 使用 setTimeout 确保DOM已渲染完成
+      setTimeout(() => scrollToIndex(newIndex), 0);
+    }
+  }, [currentMargin, arr]);
+
+  // 组件挂载时滚动到初始位置
+  useEffect(() => {
+    // 使用 setTimeout 确保DOM已渲染完成
+    setTimeout(() => scrollToIndex(activeIndex), 0);
+  }, []);
+
+  // 滚动到指定索引的元素
+  const scrollToIndex = (index: number) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const item = container.querySelector<HTMLDivElement>(
+      `[data-index="${index}"]`
+    );
+    if (item) {
+      const containerRect = container.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+
+      // 计算滚动位置，使选中的元素居中
+      const scrollLeft =
+        container.scrollLeft +
+        (itemRect.left - containerRect.left) -
+        containerRect.width / 2 +
+        itemRect.width / 2;
+
+      container.scrollTo({ left: scrollLeft, behavior: "smooth" });
+    }
+  };
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      if (!scrollContainer) return;
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerCenter = containerRect.left + containerWidth / 2;
+
+      const centerZoneWidth = containerWidth / 3;
+      const centerZoneLeft = containerCenter - centerZoneWidth / 2;
+      const centerZoneRight = containerCenter + centerZoneWidth / 2;
+
+      const items =
+        scrollContainer.querySelectorAll<HTMLDivElement>("[data-number-item]");
+
+      let newActiveIndex = -1;
+      items.forEach((item, index) => {
+        const itemRect = item.getBoundingClientRect();
+        const itemCenter = itemRect.left + itemRect.width / 2;
+
+        if (itemCenter >= centerZoneLeft && itemCenter <= centerZoneRight) {
+          newActiveIndex = parseInt(item.dataset.index || "0", 10);
+        }
+      });
+
+      if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+        setActiveIndex(newActiveIndex);
+        onMarginChange(arr[newActiveIndex]);
+      }
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll);
+
+    // 初始检查
+    handleScroll();
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [activeIndex, arr, onMarginChange]);
+
+  return (
+    <div className="h-20 w-48">
+      <div
+        ref={scrollContainerRef}
+        className="h-full flex items-center overflow-x-auto scrollbar-hide space-x-2 px-2"
+      >
+        {arr.map((num, index) => (
+          <div
+            key={num}
+            data-number-item
+            data-index={index}
+            className={`size-10 shrink-0 flex items-center justify-center text-center text-base transition-transform duration-300 rounded-full ${
+              index === activeIndex
+                ? "scale-140 bg-gray-500 text-white shadow-lg"
+                : "scale-100 bg-gray-700 text-gray-200 hover:bg-gray-600"
+            }`}
+          >
+            {num}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+function FormulaBox({
+  label,
+  value,
+  width,
+}: {
+  label: string;
+  value: string;
+  width: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center border border-gray-600 rounded-xl py-1 h-16 bg-[#2c2c2e]/50 ${width}`}
+    >
+      <span className="text-xs text-gray-400 mb-0.5">{label}</span>
+      <span className="text-sm text-white font-medium truncate px-1 w-full text-center">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function KeypadButton({
+  label,
+  onClick,
+  fontSize = "text-2xl",
+}: {
+  label: string;
+  onClick: () => void;
+  fontSize?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`h-16 bg-[#3a3a3c] active:bg-[#4a4a4c] rounded-2xl ${fontSize} font-normal text-white transition-all duration-100 flex items-center justify-center select-none touch-manipulation shadow-sm`}
+    >
+      {label}
+    </button>
   );
 }
