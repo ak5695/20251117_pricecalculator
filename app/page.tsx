@@ -128,7 +128,7 @@ export default function PriceCalculator() {
 
         {/* Margin Wheel Row */}
         <div className="flex items-center justify-between w-full mt-auto pb-8">
-          <span className="text-gray-500 text-xl whitespace-nowrap mr-4">
+          <span className="text-gray-500 text-xl whitespace-nowrap mr-1">
             毛利率:
           </span>
 
@@ -158,6 +158,9 @@ const WheelSelector = ({
   const [activeIndex, setActiveIndex] = useState(
     arr.indexOf(currentMargin) || 59
   );
+
+  // 用于防抖的计时器引用
+  const vibrateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 当外部margin变化时同步滚动位置
   useEffect(() => {
@@ -198,6 +201,25 @@ const WheelSelector = ({
     }
   };
 
+  // 振动反馈函数
+  const triggerVibration = () => {
+    // 清除之前的计时器
+    if (vibrateTimeoutRef.current) {
+      clearTimeout(vibrateTimeoutRef.current);
+    }
+
+    // 只有在支持振动API且数值变化时才触发振动
+    if (navigator.vibrate) {
+      // 短振动，模拟滚轮的段落感
+      navigator.vibrate(10);
+
+      // 设置防抖，避免连续振动
+      vibrateTimeoutRef.current = setTimeout(() => {
+        vibrateTimeoutRef.current = null;
+      }, 50);
+    }
+  };
+
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
@@ -227,6 +249,8 @@ const WheelSelector = ({
       });
 
       if (newActiveIndex !== -1 && newActiveIndex !== activeIndex) {
+        // 当选中项变化时触发振动
+        triggerVibration();
         setActiveIndex(newActiveIndex);
         onMarginChange(arr[newActiveIndex]);
       }
@@ -241,14 +265,27 @@ const WheelSelector = ({
     return () => {
       scrollContainer.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
+      // 清除计时器
+      if (vibrateTimeoutRef.current) {
+        clearTimeout(vibrateTimeoutRef.current);
+      }
     };
   }, [activeIndex, arr, onMarginChange]);
 
   return (
-    <div className="h-20 w-48">
+    <div className="h-20 w-52 relative">
+      {/* 左侧渐变遮罩 */}
+      <div className="absolute -left-[2px] top-0 bottom-0 w-10 bg-gradient-to-r from-[#1c1c1e] to-transparent z-10 pointer-events-none"></div>
+
+      {/* 右侧渐变遮罩 */}
+      <div className="absolute -right-[2px] top-0 bottom-0 w-10 bg-gradient-to-l from-[#1c1c1e] to-transparent z-10 pointer-events-none"></div>
+
+      {/* 中间指示器（可选）
+      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-600 -translate-x-1/2 z-5"></div> */}
+
       <div
         ref={scrollContainerRef}
-        className="h-full flex items-center overflow-x-auto scrollbar-hide space-x-2 px-2"
+        className="h-full flex items-center overflow-x-auto scrollbar-hide space-x-2 px-2 relative z-0"
       >
         {arr.map((num, index) => (
           <div
@@ -257,8 +294,8 @@ const WheelSelector = ({
             data-index={index}
             className={`size-10 shrink-0 flex items-center justify-center text-center text-base transition-transform duration-300 rounded-full ${
               index === activeIndex
-                ? "scale-140 bg-gray-500 text-white shadow-lg"
-                : "scale-100 bg-gray-700 text-gray-200 hover:bg-gray-600"
+                ? "scale-130 bg-gray-500 text-white shadow-lg"
+                : "scale-80 bg-gray-700 text-gray-200 hover:bg-gray-600"
             }`}
           >
             {num}
@@ -282,7 +319,7 @@ function FormulaBox({
     <div
       className={`flex flex-col items-center justify-center border border-gray-600 rounded-xl py-1 h-16 bg-[#2c2c2e]/50 ${width}`}
     >
-      <span className="text-xs text-gray-400 mb-0.5">{label}</span>
+      <span className="text-base text-gray-400 mb-0.5">{label}</span>
       <span className="text-sm text-white font-medium truncate px-1 w-full text-center">
         {value}
       </span>
