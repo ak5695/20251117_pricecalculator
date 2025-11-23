@@ -80,12 +80,12 @@ export default function PriceCalculator() {
     <div className="min-h-screen bg-[#1c1c1e] text-white font-sans touch-none overflow-hidden flex flex-col items-center">
       <div className="w-full max-w-md px-6 py-8 flex flex-col h-full">
         {/* Title */}
-        <h1 className="text-center text-4xl text-white font-bold mt-4 mb-10 tracking-wider">
+        <h1 className="text-center text-4xl text-white font-bold mt-4 mb-9 tracking-wider">
           {t("title")}
         </h1>
 
         {/* Formula Area */}
-        <div className="flex items-center justify-center gap-1 mb-7 w-full font-bold">
+        <div className="flex items-center justify-center gap-1 mb-6 w-full font-bold">
           <FormulaBox label={t("cost")} value={cost || "0.00"} width="w-24" />
           <span className="text-gray-400 text-xl px-1">÷</span>
           <span className="text-gray-400 text-xl">(</span>
