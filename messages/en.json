@@ -1,0 +1,13 @@
+{
+  "PriceCalculator": {
+    "title": "Price Calculator",
+    "cost": "Cost",
+    "margin": "Margin",
+    "sellingPrice": "Price",
+    "reset": "Reset"
+  },
+  "Metadata": {
+    "title": "PriceCalc - Smart Price Calculator",
+    "description": "Calculate your product selling price with ease."
+  }
+}
